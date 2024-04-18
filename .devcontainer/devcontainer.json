@@ -8,5 +8,8 @@
     "6080": {
       "label": "desktop"
     }
-  }
+  },
+  "runArgs": ["--init"],
+  "overrideCommand": false
+
 }
