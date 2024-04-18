@@ -2,10 +2,6 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::slice;
 
-use sdl2::sys::{SDL_LockTexture, SDL_Rect, SDL_RenderClear, SDL_RenderCopy, SDL_RenderCopyEx, SDL_RenderPresent, SDL_Renderer, SDL_SetRenderDrawBlendMode, SDL_SetRenderDrawColor, SDL_SetRenderTarget, SDL_SetTextureBlendMode, SDL_Texture, SDL_UnlockTexture};
-
-use crate::sdl2;
-
 use super::util::constants::*;
 use super::util::kinds::{Sector, V2i, Wall, V2};
 use super::util::math::*;
@@ -14,9 +10,11 @@ use super::util::{
     kinds::{Camera, Sectors, Walls},
 };
 
+use sdl2_sys::*;
+
 #[derive(Debug, Clone)]
 pub struct State {
-    pub window: *mut sdl2::video::Window,
+    pub window: *mut SDL_Window,
     pub renderer: *mut SDL_Renderer,
     pub texture: *mut SDL_Texture,
     pub debug: *mut SDL_Texture,
@@ -166,8 +164,13 @@ pub fn point_in_sector(sector: &Sector, p: V2, state: &mut State) -> bool {
     for i in 0..sector.nwalls {
         let wall: &Wall = &state.walls.arr[sector.firstwall + i];
 
-        if point_side(p.clone(), <V2i as Clone>::clone(&wall.a).v2i_to_v2(), <V2i as Clone>::clone(&wall.b).v2i_to_v2()) > 0.0 {
-            return false
+        if point_side(
+            p.clone(),
+            <V2i as Clone>::clone(&wall.a).v2i_to_v2(),
+            <V2i as Clone>::clone(&wall.b).v2i_to_v2(),
+        ) > 0.0
+        {
+            return false;
         }
     }
 
@@ -185,16 +188,36 @@ pub fn render(state: &mut State) {
     // calculate edges of near/far planes (looking down +Y axis)
     let zdl = rotate(V2 { x: 0.0, y: 1.0 }, HFOV / 2.0);
     let zdr = rotate(V2 { x: 0.0, y: 1.0 }, -HFOV / 2.0);
-    let znl = V2 { x: zdl.x * ZNEAR, y: zdl.y * ZNEAR };
-    let znr = V2 { x: zdr.x * ZNEAR, y: zdr.y * ZNEAR };
-    let zfl = V2 { x: zdl.x * ZFAR, y: zdl.y * ZFAR };
-    let zfr = V2 { x: zdr.x * ZFAR, y: zdr.y * ZFAR };
+    let znl = V2 {
+        x: zdl.x * ZNEAR,
+        y: zdl.y * ZNEAR,
+    };
+    let znr = V2 {
+        x: zdr.x * ZNEAR,
+        y: zdr.y * ZNEAR,
+    };
+    let zfl = V2 {
+        x: zdl.x * ZFAR,
+        y: zdl.y * ZFAR,
+    };
+    let zfr = V2 {
+        x: zdr.x * ZFAR,
+        y: zdr.y * ZFAR,
+    };
 
-    let mut queue = [QueueEntry { id: state.camera.sector as usize, x0: 0, x1: (SCREEN_WIDTH - 1) as i32}];
+    let mut queue = [QueueEntry {
+        id: state.camera.sector as usize,
+        x0: 0,
+        x1: (SCREEN_WIDTH - 1) as i32,
+    }];
     let mut queue_len = 1;
 
     #[derive(Clone, Copy)]
-    struct QueueEntry {id: usize, x0: i32, x1: i32, }
+    struct QueueEntry {
+        id: usize,
+        x0: i32,
+        x1: i32,
+    }
 
     while queue_len != 0 {
         queue_len -= 1;
@@ -251,13 +274,25 @@ pub fn render(state: &mut State) {
                 continue;
             }
 
-            let wallshade = 16 * (f32::sin(f32::atan2(wall.b.clone().v2i_to_v2().x - wall.a.clone().v2i_to_v2().x, wall.b.clone().v2i_to_v2().y - wall.a.clone().v2i_to_v2().y)) + 1.0) as i32;
+            let wallshade = 16
+                * (f32::sin(f32::atan2(
+                    wall.b.clone().v2i_to_v2().x - wall.a.clone().v2i_to_v2().x,
+                    wall.b.clone().v2i_to_v2().y - wall.a.clone().v2i_to_v2().y,
+                )) + 1.0) as i32;
             let x0 = clamp(tx0, entry.x0, entry.x1);
             let x1 = clamp(tx1, entry.x0, entry.x1);
             let z_floor = sector.zfloor;
             let z_ceil = sector.zceil;
-            let nz_floor = if wall.portal != 0 { state.sectors.arr[wall.portal].zfloor } else { 0.0 };
-            let nz_ceil = if wall.portal != 0 { state.sectors.arr[wall.portal].zceil } else { 0.0 };
+            let nz_floor = if wall.portal != 0 {
+                state.sectors.arr[wall.portal].zfloor
+            } else {
+                0.0
+            };
+            let nz_ceil = if wall.portal != 0 {
+                state.sectors.arr[wall.portal].zceil
+            } else {
+                0.0
+            };
             let sy0 = ifnan((VFOV * SCREEN_HEIGHT as f32) / cp0.y, 1e10);
             let sy1 = ifnan((VFOV * SCREEN_HEIGHT as f32) / cp1.y, 1e10);
             let yf0 = (SCREEN_HEIGHT / 2) + ((z_floor - EYE_Z) * sy0) as i32;
@@ -275,47 +310,116 @@ pub fn render(state: &mut State) {
             let nycd = nyc1 - nyc0;
 
             for x in x0..=x1 {
-                let shade = if x == x0 || x == x1 { 192 } else { 255 - wallshade };
+                let shade = if x == x0 || x == x1 {
+                    192
+                } else {
+                    255 - wallshade
+                };
 
                 let xp = ifnan(((x - tx0) / txd) as f32, 0.0);
                 let tyf = (xp * yfd as f32) as i32 + yf0;
                 let tyc = (xp * ycd as f32) as i32 + yc0;
-                let yf = clamp(tyf, state.y_lo[x as usize].into(), state.y_hi[x as usize].into());
-                let yc = clamp(tyc, state.y_lo[x as usize].into(), state.y_hi[x as usize].into());
+                let yf = clamp(
+                    tyf,
+                    state.y_lo[x as usize].into(),
+                    state.y_hi[x as usize].into(),
+                );
+                let yc = clamp(
+                    tyc,
+                    state.y_lo[x as usize].into(),
+                    state.y_hi[x as usize].into(),
+                );
 
                 if yf > state.y_lo[x as usize].into() {
-                    verline(x, state.y_lo[x as usize].into(), yf, 0xFFFF0000, &mut state.clone().to_owned());
+                    verline(
+                        x,
+                        state.y_lo[x as usize].into(),
+                        yf,
+                        0xFFFF0000,
+                        &mut state.clone().to_owned(),
+                    );
                 }
 
                 if yc < state.y_hi[x as usize] as i32 {
-                    verline(x, yc, state.y_hi[x as usize].into(), 0xFF00FFFF, &mut state.clone().to_owned());
+                    verline(
+                        x,
+                        yc,
+                        state.y_hi[x as usize].into(),
+                        0xFF00FFFF,
+                        &mut state.clone().to_owned(),
+                    );
                 }
 
                 if wall.portal != 0 {
                     let tnyf = (xp * nyfd as f32) as i32 + nyf0;
                     let tnyc = (xp * nycd as f32) as i32 + nyc0;
-                    let nyf = clamp(tnyf, state.y_lo[x as usize].into(), state.y_hi[x as usize].into());
-                    let nyc = clamp(tnyc, state.y_lo[x as usize].into(), state.y_hi[x as usize].into());
+                    let nyf = clamp(
+                        tnyf,
+                        state.y_lo[x as usize].into(),
+                        state.y_hi[x as usize].into(),
+                    );
+                    let nyc = clamp(
+                        tnyc,
+                        state.y_lo[x as usize].into(),
+                        state.y_hi[x as usize].into(),
+                    );
 
-                    verline(x, nyc, yc, abgr_mul(0xFF00FF00, shade as u32), &mut state.clone()); // Black Magic
-                    verline(x, yf, nyf, abgr_mul(0xFF0000FF, shade as u32), &mut state.clone()); // No touch
+                    verline(
+                        x,
+                        nyc,
+                        yc,
+                        abgr_mul(0xFF00FF00, shade as u32),
+                        &mut state.clone(),
+                    ); // Black Magic
+                    verline(
+                        x,
+                        yf,
+                        nyf,
+                        abgr_mul(0xFF0000FF, shade as u32),
+                        &mut state.clone(),
+                    ); // No touch
 
-                    state.y_hi[x as usize] = clamp(min(min(yc.try_into().unwrap(), nyc.try_into().unwrap()), state.y_hi[x as usize]), 0, (SCREEN_HEIGHT - 1) as u16);
-                    state.y_lo[x as usize] = clamp(max(max(yf.try_into().unwrap(), nyf.try_into().unwrap()), state.y_lo[x as usize]), 0, (SCREEN_HEIGHT - 1) as u16);
+                    state.y_hi[x as usize] = clamp(
+                        min(
+                            min(yc.try_into().unwrap(), nyc.try_into().unwrap()),
+                            state.y_hi[x as usize],
+                        ),
+                        0,
+                        (SCREEN_HEIGHT - 1) as u16,
+                    );
+                    state.y_lo[x as usize] = clamp(
+                        max(
+                            max(yf.try_into().unwrap(), nyf.try_into().unwrap()),
+                            state.y_lo[x as usize],
+                        ),
+                        0,
+                        (SCREEN_HEIGHT - 1) as u16,
+                    );
                 } else {
-                    verline(x, yf, yc, abgr_mul(0xFFD0D0D0, shade as u32), &mut state.clone());
+                    verline(
+                        x,
+                        yf,
+                        yc,
+                        abgr_mul(0xFFD0D0D0, shade as u32),
+                        &mut state.clone(),
+                    );
                 }
 
                 if state.sleepy {
                     present(&mut state.clone());
                     let ten_millis = std::time::Duration::from_millis(10);
 
-std::thread::sleep(ten_millis)                }
+                    std::thread::sleep(ten_millis)
+                }
             }
 
             if wall.portal != 0 {
                 assert!(queue_len != QUEUE_MAX as usize, "out of queue space");
-                queue[queue_len] = QueueEntry { id: wall.portal, x0, x1 };
+                queue[queue_len] = QueueEntry {
+                    id: wall.portal,
+                    x0,
+                    x1,
+                };
                 queue_len += 1;
             }
         }
@@ -331,29 +435,40 @@ pub fn present(state: &mut State) {
     unsafe {
         SDL_LockTexture(state.texture, std::ptr::null(), &mut px, &mut pitch);
         let px_slice = slice::from_raw_parts_mut(px as *mut u8, (SCREEN_HEIGHT * pitch) as usize);
-        let pixels_slice = slice::from_raw_parts(state.pixels.as_ptr() as *const u8, SCREEN_WIDTH * SCREEN_HEIGHT as usize * 4);
+        let pixels_slice = slice::from_raw_parts(
+            state.pixels.as_ptr() as *const u8,
+            SCREEN_WIDTH * SCREEN_HEIGHT as usize * 4,
+        );
         px_slice.copy_from_slice(pixels_slice);
         SDL_UnlockTexture(state.texture);
-    
 
+        SDL_SetRenderTarget(state.renderer, std::ptr::null_mut());
+        SDL_SetRenderDrawColor(state.renderer, 0, 0, 0, 0xFF);
+        SDL_SetRenderDrawBlendMode(state.renderer, sdl2_sys::SDL_BlendMode::SDL_BLENDMODE_NONE);
 
-    SDL_SetRenderTarget(state.renderer, std::ptr::null_mut());
-    SDL_SetRenderDrawColor(state.renderer, 0, 0, 0, 0xFF);
-    SDL_SetRenderDrawBlendMode(state.renderer, sdl2::sys::SDL_BlendMode::SDL_BLENDMODE_NONE);
+        SDL_RenderClear(state.renderer);
+        SDL_RenderCopyEx(
+            state.renderer,
+            state.texture,
+            std::ptr::null(),
+            std::ptr::null(),
+            0.0,
+            std::ptr::null(),
+            sdl2_sys::SDL_RendererFlip::SDL_FLIP_VERTICAL,
+        );
 
-    SDL_RenderClear(state.renderer);
-    SDL_RenderCopyEx(
-        state.renderer,
-        state.texture,
-        std::ptr::null(),
-        std::ptr::null(),
-        0.0,
-        std::ptr::null(),
-        sdl2::sys::SDL_RendererFlip::SDL_FLIP_VERTICAL,
-    );
-
-    SDL_SetTextureBlendMode(state.debug, sdl2::sys::SDL_BlendMode::SDL_BLENDMODE_BLEND);
-    SDL_RenderCopy(state.renderer, state.debug, std::ptr::null(), &SDL_Rect { x: 0, y: 0, w: 512, h: 512 });
-    SDL_RenderPresent(state.renderer);
+        SDL_SetTextureBlendMode(state.debug, sdl2_sys::SDL_BlendMode::SDL_BLENDMODE_BLEND);
+        SDL_RenderCopy(
+            state.renderer,
+            state.debug,
+            std::ptr::null(),
+            &SDL_Rect {
+                x: 0,
+                y: 0,
+                w: 512,
+                h: 512,
+            },
+        );
+        SDL_RenderPresent(state.renderer);
     }
 }
