@@ -1,38 +1,44 @@
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct V2 {
     pub x: f32,
     pub y: f32,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct V2i {
     pub x: i32,
     pub y: i32,
 }
 
+#[derive(Debug, Clone)]
 pub struct Wall {
-    a: V2i,
-    b: V2i,
-    portal: i32
+    pub a: V2i,
+    pub b: V2i,
+    pub portal: usize
 }
+
+#[derive(Debug, Clone)]
 pub struct Walls {
-    arr: [Wall; 128],
-    n: usize,
+    pub arr: [Wall; 128],
+    pub n: usize,
 }
 
+#[derive(Debug, Clone)]
 pub struct Sector {
-    id: i32,
-    firstwall: usize,
-    nwalls: usize,
-    zfloor: f32,
-    zceil: f32,
+    pub id: i32,
+    pub firstwall: usize,
+    pub nwalls: usize,
+    pub zfloor: f32,
+    pub zceil: f32,
 }
 
+#[derive(Debug, Clone)]
 pub struct Sectors {
-    arr: [Sector; 32],
-    n: usize,
+    pub arr: [Sector; 32],
+    pub n: usize,
 }
 
+#[derive(Debug, Clone)]
 pub struct Camera {
     pub pos: V2,
     pub angle: f32,
