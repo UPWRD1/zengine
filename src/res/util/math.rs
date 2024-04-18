@@ -1,14 +1,15 @@
-use super::constants::{self, HFOV, PI, PI_2, PI_4, SCREEN_WIDTH, TAU};
+use super::constants::{HFOV, PI_2, PI_4, SCREEN_WIDTH, TAU};
 use crate::res::{game::State, util::kinds::V2};
+use std::f32::consts::PI;
 
 #[inline]
 pub fn deg_2_rad(d: f32) -> f32 {
-    d * (constants::PI / 180.0)
+    d * (PI / 180.0)
 }
 
 #[inline]
 pub fn rad_2_deg(r: f32) -> f32 {
-    r * (180.0 / constants::PI)
+    r * (180.0 / PI)
 }
 
 #[inline]
@@ -80,7 +81,7 @@ pub fn rotate(v: V2, a: f32) -> V2 {
 }
 
 #[inline]
-pub fn intersect_segs(a0: V2, a1: V2, b0: V2, b1: V2) -> V2 {
+pub fn intersect_segs(a0: &V2, a1: &V2, b0: &V2, b1: &V2) -> V2 {
     let d: f32 = ((a0.x - a1.x) * (b0.y - b1.y)) - ((a0.y - a1.y) * (b0.x - b1.x));
 
     if d.abs() < 0.000001 {
@@ -94,7 +95,7 @@ pub fn intersect_segs(a0: V2, a1: V2, b0: V2, b1: V2) -> V2 {
 
     let u: f32 = (((a0.x - b0.x) * (a0.y - a1.y)) - ((a0.y - b0.y) * (a0.x - a1.x))) / d;
 
-    if t >= 0.0 && t <= 1.0 && u >= 0.0 && u <= 1.0 {
+    if (0.0..=1.0).contains(&t) && (0.0..=1.0).contains(&u) {
         V2 {
             x: a0.x + t * (a1.x - a0.x),
             y: a0.y + t * (a1.y - a0.y),
@@ -112,25 +113,25 @@ pub fn abgr_mul(col: u32, a: u32) -> u32 {
     let br: u32 = ((col & 0xFF00FF) * a) >> 8;
     let g: u32 = ((col & 0x00FF00) * a) >> 8;
 
-    return 0xFF000000 | (br & 0xFF00FF) | (g & 0x00FF00);
+    0xFF000000 | (br & 0xFF00FF) | (g & 0x00FF00)
 }
 
 #[inline]
 pub fn screen_angle_to_x(angle: f32) -> i32 {
-    return ((SCREEN_WIDTH / 2) as i32)
-        * (1.0 - f32::tan(((angle + (HFOV / 2.0)) / HFOV) * PI_2 - PI_4)) as i32;
+    ((SCREEN_WIDTH / 2) as i32)
+        * (1.0 - f32::tan(((angle + (HFOV / 2.0)) / HFOV) * PI_2 - PI_4)) as i32
 }
 
 #[inline]
 pub fn normalize_angle(a: f32) -> f32 {
-    return a - (TAU * f32::floor((a + PI) / TAU));
+    a - (TAU * f32::floor((a + PI) / TAU))
 }
 
 #[inline]
 pub fn world_pos_to_camera(p: V2, state: State) -> V2 {
     let u: V2 = V2::new(p.x - state.camera.pos.x, p.y - state.camera.pos.y);
-    return V2::new(
+    V2::new(
         u.x * state.camera.anglesin - u.y * state.camera.anglecos,
         u.x * state.camera.anglecos + u.y * state.camera.anglesin,
-    );
+    )
 }

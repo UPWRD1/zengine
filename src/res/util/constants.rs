@@ -1,7 +1,6 @@
 //use super::math::deg_2_rad;
 //use lazy_static::lazy_static;
-
-pub const PI: f32 = 3.14159265359;
+use std::f32::consts::PI;
 
 pub const TAU: f32 = 2.0 * PI;
 
@@ -15,7 +14,7 @@ pub const SCREEN_HEIGHT: i32 = 216;
 
 pub const EYE_Z: f32 = 1.65;
 
-pub const HFOV: f32 = 1.57079632679;
+pub const HFOV: f32 = std::f32::consts::FRAC_PI_2;
 
 pub const VFOV: f32 = 0.5;
 
@@ -26,3 +25,5 @@ pub const ZFAR: f32 = 128.0;
 pub const SECTOR_NON: i32 = 0;
 
 pub const SECTOR_MAX: i32 = 128;
+
+pub const QUEUE_MAX: i32 = 64;
