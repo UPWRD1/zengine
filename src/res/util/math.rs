@@ -135,3 +135,4 @@ pub fn world_pos_to_camera(p: V2, state: State) -> V2 {
         u.x * state.camera.anglecos + u.y * state.camera.anglesin,
     )
 }
+

@@ -47,7 +47,6 @@ pub struct Camera {
     pub sector: i32,
 }
 
-
 impl V2 {
     pub fn new(x: f32, y: f32) -> Self {
         V2 {x, y}

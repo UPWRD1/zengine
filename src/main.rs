@@ -9,6 +9,5 @@ fn main() {
     println!("Hello World!");
     // game -> things -> attributes
     let x: Thing = Thing::new("My first Thing".to_string());
-
     println!("{:?}", x);
 }
